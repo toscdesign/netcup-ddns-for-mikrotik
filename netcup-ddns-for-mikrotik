@@ -1,0 +1,127 @@
+# ---------------------------------------------
+# script for using the netcup API for DynDns
+#
+# by toscdesign
+# Version 1.0
+# last update: 22.09.2023
+# ---------------------------------------------
+
+
+
+#***********************************************************************
+# IMPORTANT: The script is only working with subdomains in the moment!
+#***********************************************************************
+
+
+
+#--------------------------------------------------------------------------------------------------------------
+#Define Variables
+##please enter all required data here!
+
+:global Domain domain.com ;                                          #Domain
+:global Number 123456 ;                                              #Customer Number
+:global APIkey key123 ;                                              #API Key
+:global APIpw password123 ;                                          #API Password
+:global host subdomain ;                                             #Subdomain
+:global Type A ;                                                     #Type A is ipv4
+:global Prio 10 ;                                                    #Prio has no use, let it as is
+#--------------------------------------------------------------------------------------------------------------
+
+
+
+#Log "run of script"
+:log info "netcup DDNS: running" ;
+
+
+
+#check if DNS has to be updated
+##get WAN IP
+:global WANipArr [/tool fetch url="https://wtfismyip.com/text" as-value output=user] ;
+:delay 1s ;
+:global WANipStr [:pick $WANipArr 0] ;
+:global WANip [:pick [:tostr "$WANipStr"] 0 [:find "$WANipStr" "\n"]] ;
+:delay 1s
+:set WANipArr ;
+:set WANipStr ;
+
+##get Domain IP
+:global address ($host ."." .$Domain) ;
+:global resolvedIP [:resolve $address] ;
+
+##compare IPs and decide if something has to be done
+:if ($WANip = $resolvedIP) do={:log info "Netcup Dyndns: IP ok" ;
+
+##delete Variables not in use anymore
+:set APIkey ;
+:set APIpw ;
+:set Domain ;
+:set host ;
+:set Number ;
+:set Prio ;
+:set Type ;
+:set address ;
+:delay 1s ;
+:log info "Netcup Dyndns: finished" ;} else={:log info "netcup DDNS: IP not OK" ;
+
+
+
+
+
+#the IP has to be updated
+##Login at netcup
+:global LoginResult [/tool fetch http-method=post http-header-field="Content-Type: application/json" http-data="{\"action\": \"login\", \"param\": {\"apikey\": \"$APIkey\", \"apipassword\": \"$APIpw\", \"customernumber\": \"$Number\"}}" url="https://ccp.netcup.net/run/webservice/servers/endpoint.php?JSON" as-value output=user] ;
+
+##extract SessionId
+:delay 1s ;
+:global LoginResultStr [:pick $LoginResult 0] ;
+:global SessionId [:pick $LoginResultStr 233 283] ;
+
+##Load DNS Record from netcup for ID
+delay 1s;
+:global DNSRec [/tool fetch http-method=post http-header-field="Content-Type: application/json" http-data="{\"action\": \"infoDnsRecords\", \"param\": {\"apikey\": \"$APIkey\", \"apisessionid\": \"$SessionId\", \"customernumber\": \"$Number\", \"domainname\": \"$Domain\"}}" url="https://ccp.netcup.net/run/webservice/servers/endpoint.php?JSON" as-value output=user];
+
+#extract ID from serverdata
+:delay 1s ;
+:global dnsrecords [:pick $DNSRec 0] ;
+:global findedID 0 ;
+{
+    :local id 0 ; :local hostname "" ; :local type "" ; :local destination ""
+    :global dnsrecords [:pick $dnsrecords ([:find $dnsrecords "[" -1] + 1) [:find $dnsrecords "]" -1]]
+    [:parse ":global dnsrecords ; :set dnsrecords [:toarray {$dnsrecords}]"]
+    :foreach item in=($dnsrecords->0) do={
+        :set id           ($item->0)
+        :set hostname     ($item->1)
+        :set type         ($item->2)
+        :set destination  ($item->4)
+        :if ($hostname = $host) do={
+            :put "id:$id, hostname:$hostname, type:$type, destination:$destination"
+            :set findedID $id
+        }
+    }
+:set dnsrecords
+}
+:delay 1s;
+
+##Update DNS Record
+:log info "netcup DDNS: update IP" ;
+:put $dnsid;
+:global DNSResult [/tool fetch http-method=post http-header-field="Content-Type: application/json" http-data="{\"action\": \"updateDnsRecords\", \"param\": {\"apikey\": \"$APIkey\", \"apisessionid\": \"$SessionId\", \"customernumber\": \"$Number\",\"clientrequestid\": \"\" , \"domainname\": \"$Domain\", \"dnsrecordset\": { \"dnsrecords\": [ {\"id\": \"$findedID\", \"hostname\": \"$host\", \"type\": \"$Type\", \"priority\": \"$Prio\", \"destination\": \"$WANip\", \"deleterecord\": \"false\", \"state\": \"yes\"} ]}}}" url="https://ccp.netcup.net/run/webservice/servers/endpoint.php?JSON" as-value output=user] ;
+
+##Logout at netcup
+:delay 1s ;
+:global LogoutResult [/tool fetch http-method=post http-header-field="Content-Type: application/json" http-data="{\"action\": \"logout\", \"param\": {\"apikey\": \"$APIkey\", \"apisessionid\": \"$SessionId\", \"customernumber\": \"$Number\"}}" url="https://ccp.netcup.net/run/webservice/servers/endpoint.php?JSON" as-value output=user] ;
+:delay 1s ;
+:set APIkey ;
+:set APIpw ;
+:set Domain ;
+:set host ;
+:set Number ;
+:set Prio ;
+:set Type ;
+:set address ;
+:set LoginResultStr ;
+:set SessionId ;
+:set DNSRec ;
+:set findedID ;
+:log info "Netcup Dyndns: finished" ;
+}
