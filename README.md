@@ -5,7 +5,6 @@ This Script is for using the netcup API for DynDNS on Mikrotik Routers
 1. The script is only working with subdomains in the moment!
 2. The subdomain must exist in the netcup CCP (Customer Control Panel)
 
-<br>
 ## How the script works
 Checks the IP of the Internet connection against the IP in the DNS Record on the netcup API,
 <br>
