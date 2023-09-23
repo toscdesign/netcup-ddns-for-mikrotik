@@ -1,16 +1,15 @@
 # netcup-ddns-for-mikrotik
 This Script is for using the netcup API for DynDNS on Mikrotik Routers
 <br>
-## <span style="color:red">Important note</span>
+## Important note !
 1. The script is only working with subdomains in the moment!
 2. The subdomain must exist in the netcup CCP (Customer Control Panel)
 
-
-## Functions
+<br>
+## How the script works
 Checks the IP of the Internet connection against the IP in the DNS Record on the netcup API,
 <br>
 when the IP is different it starts the update process to the new IP.
-
 
 ## How to set it up
 1. set up you subdomain record in the netcup CCP (Customer Control Panel)
@@ -23,5 +22,5 @@ when the IP is different it starts the update process to the new IP.
 <!-- <p> -->
 <br>
 <!-- <p> -->
-special thanks to **rextended** from the mikrotik forums for the "ID extraction function" in this script
+special thanks to rextended from the mikrotik forums for the "ID extraction function" in this script
 
